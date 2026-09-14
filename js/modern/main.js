@@ -57,7 +57,7 @@ function renderUploads(uploads) {
     if (upload.gatewayUrl) {
       title.href = upload.gatewayUrl;
       title.target = '_blank';
-      title.rel = 'noreferrer';
+      title.rel = 'noopener noreferrer';
     }
 
     const meta = document.createElement('small');
@@ -166,6 +166,10 @@ async function init() {
   });
 
   renderSession();
+
+  if (!health) {
+    return;
+  }
 
   if (session?.sessionToken) {
     try {

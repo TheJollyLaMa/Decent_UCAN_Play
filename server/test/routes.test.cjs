@@ -92,3 +92,36 @@ test('upload route rejects a non-positive file size', async () => {
     assert.equal(response.body.error, 'A positive file size is required.');
   });
 });
+
+test('magic link verification is one-time use at the route level', async () => {
+  await withServer(async (baseUrl) => {
+    const linkResponse = await requestJson(baseUrl, '/api/v2/auth/request-link', {
+      method: 'POST',
+      body: { email: 'user@example.com' }
+    });
+    const token = new URL(linkResponse.body.previewUrl).searchParams.get('token');
+
+    const firstVerify = await requestJson(baseUrl, '/api/v2/auth/verify', {
+      method: 'POST',
+      body: { token }
+    });
+    const secondVerify = await requestJson(baseUrl, '/api/v2/auth/verify', {
+      method: 'POST',
+      body: { token }
+    });
+
+    assert.equal(firstVerify.status, 200);
+    assert.equal(typeof firstVerify.body.sessionToken, 'string');
+    assert.equal(secondVerify.status, 400);
+    assert.equal(secondVerify.body.error, 'The magic link is invalid or has expired.');
+  });
+});
+
+test('protected routes reject missing bearer tokens', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await requestJson(baseUrl, '/api/v2/uploads');
+
+    assert.equal(response.status, 401);
+    assert.equal(response.body.error, 'Your session is missing or has expired.');
+  });
+});
