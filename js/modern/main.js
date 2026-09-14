@@ -87,6 +87,9 @@ async function handleMagicLinkFromUrl() {
   }
 
   setStatus(elements.authStatus, 'Verifying your magic link…');
+  params.delete('token');
+  const query = params.toString();
+  window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
 
   try {
     const verified = await verifyMagicLink(token);
@@ -95,9 +98,6 @@ async function handleMagicLinkFromUrl() {
     renderSession();
     await refreshUploadsList();
     setStatus(elements.authStatus, 'Magic link verified. You can upload files now.');
-    params.delete('token');
-    const query = params.toString();
-    window.history.replaceState({}, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
   } catch (error) {
     clearSession();
     session = null;
@@ -142,13 +142,13 @@ async function handleUploadSubmit(event) {
   setStatus(elements.uploadStatus, `Uploading ${files.length} file(s)…`);
 
   try {
-    const pinata = new PinataSDK({
-      pinataGateway: health?.pinataGateway || undefined
-    });
-
     for (const file of files) {
       const { signedUrl } = await createSignedUploadUrl(session.sessionToken, file);
-      await pinata.upload.public.file(file).url(signedUrl);
+      const pinata = new PinataSDK({
+        pinataGateway: health?.pinataGateway || undefined,
+        uploadUrl: signedUrl
+      });
+      await pinata.upload.public.file(file);
     }
 
     elements.uploadForm.reset();

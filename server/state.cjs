@@ -5,7 +5,21 @@ function normalizeEmail(email) {
 }
 
 function isValidEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(email));
+  const normalized = normalizeEmail(email);
+
+  if (!normalized || normalized.includes(' ')) {
+    return false;
+  }
+
+  const atIndex = normalized.indexOf('@');
+  if (atIndex <= 0 || atIndex !== normalized.lastIndexOf('@')) {
+    return false;
+  }
+
+  const domain = normalized.slice(atIndex + 1);
+  const dotIndex = domain.indexOf('.');
+
+  return dotIndex > 0 && dotIndex < domain.length - 1;
 }
 
 function createRuntimeState({

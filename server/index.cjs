@@ -34,7 +34,7 @@ function createApp(config = readConfig()) {
     const separator = config.magicLinkBaseUrl.includes('?') ? '&' : '?';
     const previewUrl = `${config.magicLinkBaseUrl}${separator}token=${magicLink.token}`;
 
-    console.info(`[modern-auth] Magic link requested for ${email}: ${previewUrl}`);
+    console.info(`[modern-auth] Magic link requested for ${email}; expires at ${new Date(magicLink.expiresAt).toISOString()}`);
 
     return res.json({
       ok: true,
