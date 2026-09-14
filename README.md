@@ -62,7 +62,7 @@ That option gives you more infrastructure control and reduces provider lock-in, 
 
 ## Local installation
 
-Use Node.js 18+.
+Use Node.js 20+.
 
 ```bash
 git clone https://github.com/yourusername/Decent_UCAN_Play.git

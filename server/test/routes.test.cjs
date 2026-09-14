@@ -134,7 +134,7 @@ test('protected routes return 503 when Pinata is not configured', async () => {
     });
 
     assert.equal(response.status, 503);
-    assert.equal(response.body.error, 'Pinata is not configured. Set PINATA_JWT and PINATA_GATEWAY in your environment.');
+    assert.equal(response.body.error, 'Pinata is not configured on the server.');
   });
 });
 

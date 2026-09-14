@@ -19,8 +19,21 @@ const elements = {
 };
 
 let health = null;
-let session = loadSession();
+let session = sanitizeSession(loadSession());
 const UPLOAD_CONCURRENCY = 3;
+
+function sanitizeSession(currentSession) {
+  if (!currentSession?.sessionToken || !currentSession?.expiresAt) {
+    return null;
+  }
+
+  if (Number(currentSession.expiresAt) <= Date.now()) {
+    clearSession();
+    return null;
+  }
+
+  return currentSession;
+}
 
 function setStatus(element, message, isError = false) {
   element.setAttribute('aria-live', isError ? 'assertive' : 'polite');
@@ -97,6 +110,7 @@ async function handleMagicLinkFromUrl() {
     const verified = await verifyMagicLink(token);
     session = verified;
     saveSession(session);
+    session = sanitizeSession(session);
     renderSession();
     await refreshUploadsList();
     setStatus(elements.authStatus, 'Magic link verified. You can upload files now.');

@@ -174,9 +174,13 @@ function createApp(config = readConfig(), services = { createSignedUploadUrl, li
     const isConfigurationError = /not configured/i.test(message);
     const status = isConfigurationError ? 503 : 500;
 
+    if (isConfigurationError) {
+      console.warn(`[modern-api] ${message}`);
+    }
+
     res.status(status).json({
       ok: false,
-      error: isConfigurationError ? message : 'Unexpected server error.'
+      error: isConfigurationError ? 'Pinata is not configured on the server.' : 'Unexpected server error.'
     });
   });
 
