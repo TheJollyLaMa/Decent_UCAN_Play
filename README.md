@@ -4,25 +4,65 @@
 
 ## Overview
 
-Decent UCAN Play is a futuristic, web-based application that leverages [web3.storage](https://web3.storage) and UCAN-based authentication to provide secure and persistent file storage and browsing on IPFS. Mostly just a another layer on top of the web3.storage API, it showcases how to build a user-friendly interface for managing uploads and exploring content in a decentralized manner.
+This repository now ships with **two clearly separated application paths**:
 
-## Features
+- **Legacy path** — the original browser-only Web3.Storage/UCAN experience remains available at `/index.html` and is preserved as-is for backwards reference.
+- **Modern path** — a new Pinata-first flow is available at `/modern.html`, backed by a lightweight Node sidecar that issues email magic links and short-lived Pinata signed upload URLs.
 
-- **Persistent Authentication:** Users authenticate via a unique agent credential that is securely stored in IndexedDB. New users undergo an email verification and UCAN authorization process, while returning users have their state automatically restored.
+The goal of the split is to keep the old implementation accessible while introducing a safer, maintainable replacement flow that avoids the deprecated packages previously installed through npm.
 
-- **Spaces & Uploads:** Each user’s agent is associated with multiple Spaces (namespaces for uploads). The app lists all Spaces with human-readable names (if provided) and allows you to view each Space's uploads.
+## Why the revamp was needed
 
-- **Embedded Directory Views:** Each upload entry displays a root CID formatted as a clickable link (using the `w3s.link` gateway). A dropdown button toggles an embedded iframe that displays the directory view of the uploaded content directly from IPFS.
+The original project depended on npm packages that are now deprecated or fragile for new work:
 
-- **Comprehensive Aggregation:** The application aggregates uploads across paginated API responses, so all results are loaded and displayed together without needing a separate "Load More" button.
+- `@web3-storage/w3up-client` and `@web3-storage/access` were part of the previous runtime direction and are no longer used by the modern path.
+- `ipfs-http-client` is deprecated in favor of newer IPFS tooling.
+- The legacy page also relied on a remotely hosted browser bundle, which made the current npm dependency set misleading compared with the actual runtime.
 
-- **Custom UI with Neon Effects:** Enjoy a distinctive, futuristic look with a custom CSS theme. The app features a Horus.png background, neon text, animations, and a dynamic neon round button that opens an educational modal.  Want your own style or want to add functionality? Fork the repo and make it your own!
+The revamp keeps the **legacy page intact** while moving the new path to a cleaner split:
 
-- **Educational Modal:** A neon round button in the upper left (featuring a 📚 emoji) opens a modal in the center of the screen. The modal provides embedded YouTube videos and resource links to help you learn about IPFS and web3.storage.
+- **frontend:** Vite-served static UI at `modern.html`
+- **backend sidecar:** `server/index.cjs`
+- **provider:** Pinata signed uploads with the JWT kept server-side only
 
-## Local Installation
+## Version map
 
-Ensure you have Node.js (v18+) and npm (v7+) installed. Then, clone this repository and install dependencies:
+| Path | Purpose | Notes |
+| --- | --- | --- |
+| `/index.html` | Legacy app | Preserved legacy flow and UI |
+| `/modern.html` | New app | Magic-link sign-in + Pinata signed uploads |
+| `/server/index.cjs` | Modern sidecar | Issues preview magic links, sessions, and Pinata signed URLs |
+
+## Modern architecture
+
+1. The user requests a magic link from the modern UI.
+2. The sidecar creates a one-time token and, in local preview mode, returns a verification URL directly.
+3. Visiting the verification URL exchanges the token for a short-lived session.
+4. The browser requests a **signed upload URL** from the sidecar.
+5. The browser uploads directly to Pinata without ever receiving the account JWT.
+6. The sidecar lists recent uploads for the authenticated email by filtering Pinata metadata.
+
+## Pinata-first decision
+
+Because you already have a Pinata account, Pinata is the default provider for the new path and is a practical fit **as long as the JWT stays on the server**.
+
+### Why Pinata is feasible here
+
+- The modern path uses **short-lived signed upload URLs**.
+- `PINATA_JWT` never needs to be exposed to the browser.
+- The browser can still upload directly to Pinata, so the sidecar stays small.
+
+### More decentralized alternative
+
+If you later want a more decentralized stack than a managed pinning provider, the strongest follow-up option is:
+
+- **Helia in the browser + self-hosted Kubo/IPFS Cluster**
+
+That option gives you more infrastructure control and reduces provider lock-in, but it also adds operational complexity, auth work, and content persistence responsibilities. For this repo revamp, Pinata is the smallest coherent upgrade.
+
+## Local installation
+
+Use Node.js 18+.
 
 ```bash
 git clone https://github.com/yourusername/Decent_UCAN_Play.git
@@ -30,49 +70,68 @@ cd Decent_UCAN_Play
 npm install
 ```
 
+## Environment for the modern path
+
+Copy the example file and fill in your Pinata values:
+
+```bash
+cp .env.example .env
+```
+
+Required values:
+
+- `PINATA_JWT` — your server-side Pinata JWT
+- `PINATA_GATEWAY` — your Pinata gateway domain
+
+Helpful defaults already included:
+
+- `PORT=8787`
+- `MAGIC_LINK_BASE_URL=http://localhost:5173/modern.html`
+- `DEV_MAGIC_LINK_PREVIEW=1`
+
 ## Usage
 
-To run the application locally, start a development server (using Vite):
+### Legacy path
 
 ```bash
 npm run dev
 ```
 
-The app typically runs at [http://localhost:5173](http://localhost:5173).
+Then open `http://localhost:5173/index.html`.
 
-### Authentication & Persistence
+### Modern path
 
-- **New Users:** New users are prompted to login via email verification if no agent credentials exist. After email confirmation (and KYC and optional payment plan selection), the agent state is persisted locally.
+Run the Pinata sidecar in one terminal:
 
-- **Existing Users:** Returning users load their agent credentials from IndexedDB, and their associated Spaces and uploads are displayed.
+```bash
+npm run server
+```
 
-## How It Works
+Run Vite in another terminal:
 
-1. **Client Initialization:**
-   The client is initialized by calling `create()` from the w3up-client library, which loads persisted agent data from IndexedDB. Once authenticated, the app displays your agent’s DID and retrieves all associated Spaces.
+```bash
+npm run dev
+```
 
-2. **Space Listing:**
-   Available Spaces are rendered as clickable entries. The app prioritizes human-readable names (if provided via metadata) over long DID keys. Clicking a Space sets it as the current context and fetches all its uploads.
+Then open `http://localhost:5173/modern.html`.
 
-3. **Upload Aggregation & Directory Embedding:**
-   All uploads are fetched and sorted by their insertion timestamp. Each upload entry includes a clickable root CID and a dropdown button that toggles an embedded iframe displaying the directory view of the uploaded content from IPFS.
+If `DEV_MAGIC_LINK_PREVIEW=1`, the server returns a preview link directly in the UI so you can complete the sign-in flow without wiring an email provider first.
 
-4. **Educational Modal:**
-   A neon round button in the upper left (with a 📚 emoji) provides quick access to learning resources about IPFS. When clicked, a modal appears in the center of the screen containing embedded YouTube videos and helpful resource links. Future bounties to come! Check back frequently!
+## Available scripts
 
-5. **Security & Privacy:**
-   All sensitive agent credentials are securely stored in IndexedDB. No sensitive data is exposed in the repository or transmitted insecurely.
+- `npm run dev` — serve both the legacy and modern frontend entries with Vite
+- `npm run build` — build both `index.html` and `modern.html`
+- `npm run server` — run the Pinata sidecar
+- `npm test` — run focused server-state tests
 
----
+## Notes on production hardening
 
-<footer>
-  <hr>
-  <p style="text-align: center;">
-    <img src="img/IPFS_Logo.png" alt="IPFS Logo" style="height: 40px; margin-right: 10px;">
-    <img src="img/web3.storage.png" alt="Web3.Storage Logo" style="height: 40px; margin-right: 10px;">
-    <img src="img/metamask.png" alt="Metamask Logo" style="height: 40px;">
-  </p>
-</footer>
+The modern flow is intentionally small, but you will likely want to extend it before production use:
+
+- Replace preview-mode magic links with a real mailer integration.
+- Swap the in-memory token/session store for durable storage.
+- Add rate limiting and audit logging to the sidecar.
+- Tighten upload rules further if you only accept specific MIME types.
 
 ## License
 

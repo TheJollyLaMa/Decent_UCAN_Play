@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Decent UCAN Play Modern</title>
+    <link rel="icon" type="image/png" href="img/Horus.png" />
+    <link rel="stylesheet" href="css/modern.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero card">
+        <p class="eyebrow">Legacy preserved · Pinata-first revamp</p>
+        <h1>Decent UCAN Play — Modern Path</h1>
+        <p>
+          The original app remains available at <a href="./index.html">the legacy entry</a>.
+          This modern path replaces the deprecated runtime with a small backend sidecar,
+          email magic links, and Pinata signed uploads.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>1. Request a magic link</h2>
+        <form id="loginForm" class="stack">
+          <label for="emailInput">Email</label>
+          <input id="emailInput" name="email" type="email" placeholder="you@example.com" required />
+          <button type="submit">Send magic link</button>
+        </form>
+        <p id="authStatus" class="status" role="status"></p>
+        <div id="magicLinkPreview" class="preview" hidden>
+          <strong>Preview link</strong>
+          <p>Preview mode is enabled for local development. Open this link to complete the sign-in flow:</p>
+          <a id="magicLinkAnchor" href="#"></a>
+        </div>
+      </section>
+
+      <section id="sessionPanel" class="card" hidden>
+        <h2>2. Upload with a delegated signed URL</h2>
+        <p id="sessionInfo" class="status"></p>
+        <form id="uploadForm" class="stack">
+          <label for="fileInput">Choose one or more files</label>
+          <input id="fileInput" name="files" type="file" multiple required />
+          <button type="submit">Upload to Pinata</button>
+        </form>
+        <p id="uploadStatus" class="status" role="status"></p>
+      </section>
+
+      <section id="uploadsPanel" class="card" hidden>
+        <div class="sectionHeader">
+          <h2>3. Recent uploads</h2>
+          <button id="refreshUploads" type="button">Refresh</button>
+        </div>
+        <ul id="uploadsList" class="uploads"></ul>
+      </section>
+
+      <section class="card">
+        <h2>Why this split exists</h2>
+        <ul>
+          <li>The root <code>index.html</code> path remains the untouched legacy experience.</li>
+          <li>The new path removes the deprecated Web3.Storage/IPFS client dependencies from the active runtime.</li>
+          <li>Pinata secrets stay server-side; the browser only receives short-lived signed upload URLs.</li>
+          <li>If you later want a more decentralized option, the best next step is Helia + self-hosted Kubo/IPFS Cluster, at the cost of more operations work.</li>
+        </ul>
+      </section>
+    </main>
+
+    <script type="module" src="./js/modern/main.js"></script>
+  </body>
+</html>
