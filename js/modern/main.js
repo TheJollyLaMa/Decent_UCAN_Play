@@ -23,6 +23,7 @@ let session = loadSession();
 const UPLOAD_CONCURRENCY = 3;
 
 function setStatus(element, message, isError = false) {
+  element.setAttribute('aria-live', isError ? 'assertive' : 'polite');
   element.textContent = message;
   element.classList.toggle('error', isError);
 }
@@ -176,6 +177,8 @@ async function init() {
     return;
   }
 
+  await handleMagicLinkFromUrl();
+
   if (session?.sessionToken) {
     try {
       await refreshUploadsList();
@@ -186,8 +189,6 @@ async function init() {
       setStatus(elements.authStatus, error.message, true);
     }
   }
-
-  await handleMagicLinkFromUrl();
 
   if (health && !health.pinataConfigured) {
     setStatus(elements.uploadStatus, 'Pinata is not configured yet. Add PINATA_JWT and PINATA_GATEWAY to run the modern flow.', true);

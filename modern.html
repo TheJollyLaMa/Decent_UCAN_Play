@@ -26,7 +26,7 @@
           <input id="emailInput" name="email" type="email" placeholder="you@example.com" required />
           <button type="submit">Send magic link</button>
         </form>
-        <p id="authStatus" class="status" role="status"></p>
+        <p id="authStatus" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
         <div id="magicLinkPreview" class="preview" hidden>
           <strong>Preview link</strong>
           <p>Preview mode is enabled for local development. Open this link to complete the sign-in flow:</p>
@@ -42,7 +42,7 @@
           <input id="fileInput" name="files" type="file" multiple required />
           <button type="submit">Upload to Pinata</button>
         </form>
-        <p id="uploadStatus" class="status" role="status"></p>
+        <p id="uploadStatus" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
       </section>
 
       <section id="uploadsPanel" class="card" hidden>

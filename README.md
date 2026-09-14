@@ -130,7 +130,7 @@ The modern flow is intentionally small, but you will likely want to extend it be
 
 - Replace preview-mode magic links with a real mailer integration.
 - Swap the in-memory token/session store for durable storage.
-- Add rate limiting and audit logging to the sidecar.
+- Expand the current in-memory request throttling into durable rate limiting and audit logging if you deploy the sidecar beyond local use.
 - Tighten upload rules further if you only accept specific MIME types.
 
 ## License
