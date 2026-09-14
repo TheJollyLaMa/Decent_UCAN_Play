@@ -20,6 +20,7 @@ const elements = {
 
 let health = null;
 let session = loadSession();
+const UPLOAD_CONCURRENCY = 3;
 
 function setStatus(element, message, isError = false) {
   element.textContent = message;
@@ -142,13 +143,17 @@ async function handleUploadSubmit(event) {
   setStatus(elements.uploadStatus, `Uploading ${files.length} file(s)…`);
 
   try {
-    for (const file of files) {
+    const uploadTasks = files.map((file) => async () => {
       const { signedUrl } = await createSignedUploadUrl(session.sessionToken, file);
       const pinata = new PinataSDK({
         pinataGateway: health?.pinataGateway || undefined,
         uploadUrl: signedUrl
       });
       await pinata.upload.public.file(file);
+    });
+
+    for (let index = 0; index < uploadTasks.length; index += UPLOAD_CONCURRENCY) {
+      await Promise.all(uploadTasks.slice(index, index + UPLOAD_CONCURRENCY).map((task) => task()));
     }
 
     elements.uploadForm.reset();

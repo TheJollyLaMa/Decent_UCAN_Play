@@ -125,3 +125,58 @@ test('protected routes reject missing bearer tokens', async () => {
     assert.equal(response.body.error, 'Your session is missing or has expired.');
   });
 });
+
+test('protected routes return 503 when Pinata is not configured', async () => {
+  await withServer(async (baseUrl) => {
+    const sessionToken = await createSessionToken(baseUrl);
+    const response = await requestJson(baseUrl, '/api/v2/uploads', {
+      token: sessionToken
+    });
+
+    assert.equal(response.status, 503);
+    assert.equal(response.body.error, 'Pinata is not configured. Set PINATA_JWT and PINATA_GATEWAY in your environment.');
+  });
+});
+
+test('unexpected downstream failures are masked as 500 responses', async () => {
+  const { app } = createApp({
+    port: 0,
+    pinataConfigured: true,
+    pinataJwt: 'jwt',
+    pinataGateway: 'example.mypinata.cloud',
+    magicLinkBaseUrl: 'http://localhost:5173/modern.html',
+    magicLinkTtlSeconds: 900,
+    sessionTtlSeconds: 86400,
+    previewMagicLinks: true
+  }, {
+    async createSignedUploadUrl() {
+      throw new Error('downstream exploded');
+    },
+    async listUploads() {
+      return [];
+    }
+  });
+
+  const server = await new Promise((resolve) => {
+    const instance = app.listen(0, () => resolve(instance));
+  });
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+
+  try {
+    const sessionToken = await createSessionToken(baseUrl);
+    const response = await requestJson(baseUrl, '/api/v2/uploads/signed-url', {
+      method: 'POST',
+      token: sessionToken,
+      body: {
+        name: 'hello.txt',
+        mimeType: 'text/plain',
+        size: 5
+      }
+    });
+
+    assert.equal(response.status, 500);
+    assert.equal(response.body.error, 'Unexpected server error.');
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});

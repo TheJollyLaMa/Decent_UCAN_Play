@@ -3,19 +3,37 @@ const { readConfig } = require('./config.cjs');
 const { createRuntimeState, isValidEmail, normalizeEmail } = require('./state.cjs');
 const { createSignedUploadUrl, listUploads } = require('./pinata.cjs');
 
-function createApp(config = readConfig()) {
+function createRateLimiter({ limit = 5, windowMs = 60_000, now = () => Date.now() } = {}) {
+  const buckets = new Map();
+
+  return {
+    allow(key) {
+      const windowStart = now() - windowMs;
+      const recentHits = (buckets.get(key) || []).filter((value) => value > windowStart);
+
+      if (recentHits.length >= limit) {
+        buckets.set(key, recentHits);
+        return false;
+      }
+
+      recentHits.push(now());
+      buckets.set(key, recentHits);
+      return true;
+    }
+  };
+}
+
+function createApp(config = readConfig(), services = { createSignedUploadUrl, listUploads }) {
   const app = express();
   const state = createRuntimeState(config);
+  const requestLinkLimiter = createRateLimiter();
 
   app.use(express.json());
 
   app.get('/api/v2/health', (_req, res) => {
     res.json({
       ok: true,
-      provider: 'pinata',
       pinataConfigured: config.pinataConfigured,
-      previewMagicLinks: config.previewMagicLinks,
-      magicLinkBaseUrl: config.magicLinkBaseUrl,
       pinataGateway: config.pinataGateway || null
     });
   });
@@ -27,6 +45,14 @@ function createApp(config = readConfig()) {
       return res.status(400).json({
         ok: false,
         error: 'Please provide a valid email address.'
+      });
+    }
+
+    const requestKey = `${req.ip}:${email}`;
+    if (!requestLinkLimiter.allow(requestKey)) {
+      return res.status(429).json({
+        ok: false,
+        error: 'Too many magic link requests. Please wait and try again.'
       });
     }
 
@@ -99,7 +125,7 @@ function createApp(config = readConfig()) {
 
   app.get('/api/v2/uploads', requireSession, async (req, res, next) => {
     try {
-      const uploads = await listUploads(config, { email: req.session.email });
+      const uploads = await services.listUploads(config, { email: req.session.email });
       res.json({ ok: true, uploads });
     } catch (error) {
       next(error);
@@ -126,7 +152,7 @@ function createApp(config = readConfig()) {
     }
 
     try {
-      const signedUrl = await createSignedUploadUrl(config, {
+      const signedUrl = await services.createSignedUploadUrl(config, {
         email: req.session.email,
         name,
         mimeType,
@@ -165,5 +191,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-  createApp
+  createApp,
+  createRateLimiter
 };
