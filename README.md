@@ -7,58 +7,61 @@
 This repository now ships with **two clearly separated application paths**:
 
 - **Legacy path** — the original browser-only Web3.Storage/UCAN experience remains available at `/index.html` and is preserved as-is for backwards reference.
-- **Modern path** — a new Pinata-first flow is available at `/modern.html`, backed by a lightweight Node sidecar that issues email magic links and short-lived Pinata signed upload URLs.
+- **Modern path** — a zero-backend, local-first browser app is available at `/modern.html` with bring-your-own Pinata credentials, local DID generation, and client-side UCAN session delegation.
 
-The goal of the split is to keep the old implementation accessible while introducing a safer, maintainable replacement flow that avoids the deprecated packages previously installed through npm.
+The goal of the split is to keep the old implementation accessible while introducing a safer replacement path without destructive changes to the legacy flow.
 
 ## Why the revamp was needed
 
-The original project depended on npm packages that are now deprecated or fragile for new work:
+The original npm runtime depended on packages that are no longer a good fit for the new path:
 
-- `@web3-storage/w3up-client` and `@web3-storage/access` were part of the previous runtime direction and are no longer used by the modern path.
 - `ipfs-http-client` is deprecated in favor of newer IPFS tooling.
-- The legacy page also relied on a remotely hosted browser bundle, which made the current npm dependency set misleading compared with the actual runtime.
+- The legacy experience depends on older Web3.Storage-era browser behavior that should remain available for reference, but it should not block a cleaner replacement path.
 
-The revamp keeps the **legacy page intact** while moving the new path to a cleaner split:
+The revamp therefore keeps the **legacy page intact** while moving the new path to a simpler browser-only split:
 
-- **frontend:** Vite-served static UI at `modern.html`
-- **backend sidecar:** `server/index.cjs`
-- **provider:** Pinata signed uploads with the JWT kept server-side only
+- **legacy:** `/index.html`
+- **modern:** `/modern.html`
+- **browser storage:** IndexedDB via `idb-keyval`
+- **provider:** Pinata BYOK in the browser
+- **local authorization envelope:** `@ucanto/principal` + `@ucanto/core`
 
 ## Version map
 
 | Path | Purpose | Notes |
 | --- | --- | --- |
 | `/index.html` | Legacy app | Preserved legacy flow and UI |
-| `/modern.html` | New app | Magic-link sign-in + Pinata signed uploads |
-| `/server/index.cjs` | Modern sidecar | Issues preview magic links, sessions, and Pinata signed URLs |
+| `/modern.html` | New app | Zero-backend Pinata BYOK + local DID/UCAN session |
 
 ## Modern architecture
 
-1. The user requests a magic link from the modern UI.
-2. The sidecar creates a one-time token and, in local preview mode, returns a verification URL directly.
-3. Visiting the verification URL exchanges the token for a short-lived session.
-4. The browser requests a **signed upload URL** from the sidecar.
-5. The browser uploads directly to Pinata without ever receiving the account JWT.
-6. The sidecar lists recent uploads for the authenticated email by filtering Pinata metadata.
+1. The user saves their own Pinata JWT and gateway domain in IndexedDB.
+2. The browser creates and stores a root `did:key` identity locally.
+3. When the user starts a session, the browser generates a second `did:key` and creates a UCAN delegation from the root identity to that session identity.
+4. The browser uploads directly to Pinata using the locally stored BYOK credentials.
+5. The browser lists prior uploads for the current DID by filtering Pinata metadata tagged with that DID.
 
 ## Pinata-first decision
 
-Because you already have a Pinata account, Pinata is the default provider for the new path and is a practical fit **as long as the JWT stays on the server**.
+Because you already have a Pinata account and requested a zero-backend app, Pinata is the practical default for the new path.
 
 ### Why Pinata is feasible here
 
-- The modern path uses **short-lived signed upload URLs**.
-- `PINATA_JWT` never needs to be exposed to the browser.
-- The browser can still upload directly to Pinata, so the sidecar stays small.
+- The app can run 100% statically.
+- Each user brings their own JWT instead of relying on a shared backend secret.
+- Uploads and listing calls go directly from the browser to Pinata.
+
+### UCAN tradeoff in a zero-backend Pinata flow
+
+Pinata's browser flow is credential-driven, not UCAN-native. In this revamp, UCAN is still used meaningfully for **local DID generation and delegated browser session state**, but Pinata itself does not enforce the UCAN proof remotely. That is the tradeoff that keeps the app static and BYOK.
 
 ### More decentralized alternative
 
-If you later want a more decentralized stack than a managed pinning provider, the strongest follow-up option is:
+If you later want a more decentralized remote-storage path than a managed pinning provider, the strongest follow-up option is:
 
 - **Helia in the browser + self-hosted Kubo/IPFS Cluster**
 
-That option gives you more infrastructure control and reduces provider lock-in, but it also adds operational complexity, auth work, and content persistence responsibilities. For this repo revamp, Pinata is the smallest coherent upgrade.
+That path reduces provider dependence, but it adds operational complexity, persistence responsibilities, and extra auth work compared with Pinata BYOK.
 
 ## Local installation
 
@@ -69,25 +72,6 @@ git clone https://github.com/yourusername/Decent_UCAN_Play.git
 cd Decent_UCAN_Play
 npm install
 ```
-
-## Environment for the modern path
-
-Copy the example file and fill in your Pinata values:
-
-```bash
-cp .env.example .env
-```
-
-Required values:
-
-- `PINATA_JWT` — your server-side Pinata JWT
-- `PINATA_GATEWAY` — your Pinata gateway domain
-
-Helpful defaults already included:
-
-- `PORT=8787`
-- `MAGIC_LINK_BASE_URL=http://localhost:5173/modern.html`
-- `DEV_MAGIC_LINK_PREVIEW=1`
 
 ## Usage
 
@@ -101,37 +85,32 @@ Then open `http://localhost:5173/index.html`.
 
 ### Modern path
 
-Run the Pinata sidecar in one terminal:
-
-```bash
-npm run server
-```
-
-Run Vite in another terminal:
-
 ```bash
 npm run dev
 ```
 
 Then open `http://localhost:5173/modern.html`.
 
-If `DEV_MAGIC_LINK_PREVIEW=1`, the server returns a preview link directly in the UI so you can complete the sign-in flow without wiring an email provider first.
+From there:
+
+1. Paste your Pinata JWT and gateway domain and save them locally.
+2. Create or rotate a browser-local DID.
+3. Start a local UCAN session.
+4. Upload directly to Pinata from the browser.
 
 ## Available scripts
 
 - `npm run dev` — serve both the legacy and modern frontend entries with Vite
 - `npm run build` — build both `index.html` and `modern.html`
-- `npm run server` — run the Pinata sidecar
-- `npm test` — run focused server state and API route tests
+- `npm test` — run focused modern-path unit tests
 
-## Notes on production hardening
+## Notes on local-first security
 
-The modern flow is intentionally small, but you will likely want to extend it before production use:
+The modern flow is intentionally browser-only. Keep these tradeoffs in mind:
 
-- Replace preview-mode magic links with a real mailer integration.
-- Swap the in-memory token/session store for durable storage.
-- Expand the current in-memory request throttling into durable rate limiting and audit logging if you deploy the sidecar beyond local use.
-- Tighten upload rules further if you only accept specific MIME types.
+- Your Pinata JWT is stored only in this browser's IndexedDB, but anyone with access to the same unlocked browser profile can use it.
+- The local UCAN session is an app-level capability envelope for this browser flow; it is not remotely enforced by Pinata.
+- For stronger protection, pair this pattern with browser profile isolation, device-level security, or a future passkey/encrypted-key workflow.
 
 ## License
 

@@ -6,11 +6,6 @@ const rootDir = import.meta.dirname;
 export default defineConfig({
   root: '.',
   base: './',
-  server: {
-    proxy: {
-      '/api': 'http://localhost:8787'
-    }
-  },
   build: {
     rollupOptions: {
       input: {

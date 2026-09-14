@@ -5,11 +5,12 @@
     "dev": "vite",
     "build": "vite build",
     "deploy": "gh-pages -d dist",
-    "server": "node server/index.cjs",
-    "test": "node --test server/test/*.test.cjs"
+    "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
-    "express": "^5.2.1",
+    "@ucanto/core": "^10.4.6",
+    "@ucanto/principal": "^9.0.3",
+    "idb-keyval": "^6.3.0",
     "pinata": "^2.5.6"
   },
   "devDependencies": {
