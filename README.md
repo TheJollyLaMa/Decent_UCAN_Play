@@ -4,25 +4,68 @@
 
 ## Overview
 
-Decent UCAN Play is a futuristic, web-based application that leverages [web3.storage](https://web3.storage) and UCAN-based authentication to provide secure and persistent file storage and browsing on IPFS. Mostly just a another layer on top of the web3.storage API, it showcases how to build a user-friendly interface for managing uploads and exploring content in a decentralized manner.
+This repository now ships with **two clearly separated application paths**:
 
-## Features
+- **Legacy path** — the original browser-only Web3.Storage/UCAN experience remains available at `/index.html` and is preserved as-is for backwards reference.
+- **Modern path** — a zero-backend, local-first browser app is available at `/modern.html` with bring-your-own Pinata credentials, local DID generation, and client-side UCAN session delegation.
 
-- **Persistent Authentication:** Users authenticate via a unique agent credential that is securely stored in IndexedDB. New users undergo an email verification and UCAN authorization process, while returning users have their state automatically restored.
+The goal of the split is to keep the old implementation accessible while introducing a safer replacement path without destructive changes to the legacy flow.
 
-- **Spaces & Uploads:** Each user’s agent is associated with multiple Spaces (namespaces for uploads). The app lists all Spaces with human-readable names (if provided) and allows you to view each Space's uploads.
+## Why the revamp was needed
 
-- **Embedded Directory Views:** Each upload entry displays a root CID formatted as a clickable link (using the `w3s.link` gateway). A dropdown button toggles an embedded iframe that displays the directory view of the uploaded content directly from IPFS.
+The original npm runtime depended on packages that are no longer a good fit for the new path:
 
-- **Comprehensive Aggregation:** The application aggregates uploads across paginated API responses, so all results are loaded and displayed together without needing a separate "Load More" button.
+- `ipfs-http-client` is deprecated in favor of newer IPFS tooling.
+- The legacy experience depends on older Web3.Storage-era browser behavior that should remain available for reference, but it should not block a cleaner replacement path.
 
-- **Custom UI with Neon Effects:** Enjoy a distinctive, futuristic look with a custom CSS theme. The app features a Horus.png background, neon text, animations, and a dynamic neon round button that opens an educational modal.  Want your own style or want to add functionality? Fork the repo and make it your own!
+The revamp therefore keeps the **legacy page intact** while moving the new path to a simpler browser-only split:
 
-- **Educational Modal:** A neon round button in the upper left (featuring a 📚 emoji) opens a modal in the center of the screen. The modal provides embedded YouTube videos and resource links to help you learn about IPFS and web3.storage.
+- **legacy:** `/index.html`
+- **modern:** `/modern.html`
+- **browser storage:** IndexedDB via `idb-keyval`
+- **provider:** Pinata BYOK in the browser
+- **local authorization envelope:** `@ucanto/principal` + `@ucanto/core`
 
-## Local Installation
+## Version map
 
-Ensure you have Node.js (v18+) and npm (v7+) installed. Then, clone this repository and install dependencies:
+| Path | Purpose | Notes |
+| --- | --- | --- |
+| `/index.html` | Legacy app | Preserved legacy flow and UI |
+| `/modern.html` | New app | Zero-backend Pinata BYOK + local DID/UCAN session |
+
+## Modern architecture
+
+1. The user saves their own Pinata JWT and gateway domain in IndexedDB.
+2. The browser creates and stores a root `did:key` identity locally.
+3. When the user starts a session, the browser generates a second `did:key` and creates a UCAN delegation from the root identity to that session identity.
+4. The browser uploads directly to Pinata using the locally stored BYOK credentials.
+5. The browser lists prior uploads for the current DID by filtering Pinata metadata tagged with that DID.
+
+## Pinata-first decision
+
+Because you already have a Pinata account and requested a zero-backend app, Pinata is the practical default for the new path.
+
+### Why Pinata is feasible here
+
+- The app can run 100% statically.
+- Each user brings their own JWT instead of relying on a shared backend secret.
+- Uploads and listing calls go directly from the browser to Pinata.
+
+### UCAN tradeoff in a zero-backend Pinata flow
+
+Pinata's browser flow is credential-driven, not UCAN-native. In this revamp, UCAN is still used meaningfully for **local DID generation and delegated browser session state**, but Pinata itself does not enforce the UCAN proof remotely. That is the tradeoff that keeps the app static and BYOK.
+
+### More decentralized alternative
+
+If you later want a more decentralized remote-storage path than a managed pinning provider, the strongest follow-up option is:
+
+- **Helia in the browser + self-hosted Kubo/IPFS Cluster**
+
+That path reduces provider dependence, but it adds operational complexity, persistence responsibilities, and extra auth work compared with Pinata BYOK.
+
+## Local installation
+
+Use Node.js 20+.
 
 ```bash
 git clone https://github.com/yourusername/Decent_UCAN_Play.git
@@ -32,47 +75,42 @@ npm install
 
 ## Usage
 
-To run the application locally, start a development server (using Vite):
+### Legacy path
 
 ```bash
 npm run dev
 ```
 
-The app typically runs at [http://localhost:5173](http://localhost:5173).
+Then open `http://localhost:5173/index.html`.
 
-### Authentication & Persistence
+### Modern path
 
-- **New Users:** New users are prompted to login via email verification if no agent credentials exist. After email confirmation (and KYC and optional payment plan selection), the agent state is persisted locally.
+```bash
+npm run dev
+```
 
-- **Existing Users:** Returning users load their agent credentials from IndexedDB, and their associated Spaces and uploads are displayed.
+Then open `http://localhost:5173/modern.html`.
 
-## How It Works
+From there:
 
-1. **Client Initialization:**
-   The client is initialized by calling `create()` from the w3up-client library, which loads persisted agent data from IndexedDB. Once authenticated, the app displays your agent’s DID and retrieves all associated Spaces.
+1. Paste your Pinata JWT and gateway domain and save them locally.
+2. Create or rotate a browser-local DID.
+3. Start a local UCAN session.
+4. Upload directly to Pinata from the browser.
 
-2. **Space Listing:**
-   Available Spaces are rendered as clickable entries. The app prioritizes human-readable names (if provided via metadata) over long DID keys. Clicking a Space sets it as the current context and fetches all its uploads.
+## Available scripts
 
-3. **Upload Aggregation & Directory Embedding:**
-   All uploads are fetched and sorted by their insertion timestamp. Each upload entry includes a clickable root CID and a dropdown button that toggles an embedded iframe displaying the directory view of the uploaded content from IPFS.
+- `npm run dev` — serve both the legacy and modern frontend entries with Vite
+- `npm run build` — build both `index.html` and `modern.html`
+- `npm test` — run focused modern-path unit tests
 
-4. **Educational Modal:**
-   A neon round button in the upper left (with a 📚 emoji) provides quick access to learning resources about IPFS. When clicked, a modal appears in the center of the screen containing embedded YouTube videos and helpful resource links. Future bounties to come! Check back frequently!
+## Notes on local-first security
 
-5. **Security & Privacy:**
-   All sensitive agent credentials are securely stored in IndexedDB. No sensitive data is exposed in the repository or transmitted insecurely.
+The modern flow is intentionally browser-only. Keep these tradeoffs in mind:
 
----
-
-<footer>
-  <hr>
-  <p style="text-align: center;">
-    <img src="img/IPFS_Logo.png" alt="IPFS Logo" style="height: 40px; margin-right: 10px;">
-    <img src="img/web3.storage.png" alt="Web3.Storage Logo" style="height: 40px; margin-right: 10px;">
-    <img src="img/metamask.png" alt="Metamask Logo" style="height: 40px;">
-  </p>
-</footer>
+- Your Pinata JWT is stored only in this browser's IndexedDB, but anyone with access to the same unlocked browser profile can use it.
+- The local UCAN session is an app-level capability envelope for this browser flow; it is not remotely enforced by Pinata.
+- For stronger protection, pair this pattern with browser profile isolation, device-level security, or a future passkey/encrypted-key workflow.
 
 ## License
 

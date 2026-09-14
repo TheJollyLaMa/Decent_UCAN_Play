@@ -4,17 +4,17 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist",
+    "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
-    "@ucanto/principal": "^9.0.2",
-    "@web3-storage/access": "^20.2.0",
-    "@web3-storage/w3up-client": "^17.2.0",
-    "idb-keyval": "^6.2.1",
-    "ipfs-http-client": "^60.0.1"
+    "@ucanto/core": "^10.4.6",
+    "@ucanto/principal": "^9.0.3",
+    "idb-keyval": "^6.3.0",
+    "pinata": "^2.5.6"
   },
   "devDependencies": {
     "gh-pages": "^6.3.0",
-    "vite": "^6.2.5"
+    "vite": "^8.3.0"
   }
 }

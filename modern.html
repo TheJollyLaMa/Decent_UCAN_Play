@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Decent UCAN Play Modern</title>
+    <link rel="icon" type="image/png" href="img/Horus.png" />
+    <link rel="stylesheet" href="css/modern.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero card">
+        <p class="eyebrow">Legacy preserved · Local-first modern path</p>
+        <h1>Decent UCAN Play — Modern Path</h1>
+        <p>
+          The original app remains available at <a href="./index.html">the legacy entry</a>.
+          This modern path is a static browser app with bring-your-own Pinata keys,
+          local DID generation, and client-side UCAN session delegation.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>1. Bring your own keys</h2>
+        <form id="settingsForm" class="stack">
+          <label for="pinataJwtInput">Pinata JWT</label>
+          <input id="pinataJwtInput" name="pinataJwt" type="password" autocomplete="off" placeholder="Paste your Pinata JWT" required />
+          <label for="pinataGatewayInput">Pinata gateway domain</label>
+          <input id="pinataGatewayInput" name="pinataGateway" type="text" placeholder="example-gateway.mypinata.cloud" required />
+          <div class="actions">
+            <button type="submit">Save local settings</button>
+            <button id="clearSettingsButton" type="button" class="button-secondary">Clear local settings</button>
+          </div>
+        </form>
+        <p id="settingsStatus" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
+      </section>
+
+      <section class="card">
+        <h2>2. Create or resume a local DID</h2>
+        <form id="identityForm" class="stack">
+          <label for="profileNameInput">Profile name (optional)</label>
+          <input id="profileNameInput" name="profileName" type="text" placeholder="Horus Operator" />
+          <label for="profileEmailInput">Profile email (optional metadata only)</label>
+          <input id="profileEmailInput" name="profileEmail" type="email" placeholder="you@example.com" />
+          <div class="actions">
+            <button type="submit">Create or rotate local DID</button>
+            <button id="startSessionButton" type="button">Start local UCAN session</button>
+            <button id="clearWorkspaceButton" type="button" class="button-secondary">Clear local workspace</button>
+          </div>
+        </form>
+        <p id="identityStatus" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
+        <div id="identitySummary" class="summary"></div>
+      </section>
+
+      <section id="uploadPanel" class="card" hidden>
+        <h2>3. Upload to Pinata from this browser</h2>
+        <p id="sessionSummary" class="status"></p>
+        <form id="uploadForm" class="stack">
+          <label for="fileInput">Choose one or more files</label>
+          <input id="fileInput" name="files" type="file" multiple required />
+          <button type="submit">Upload selected files</button>
+        </form>
+        <p id="uploadStatus" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
+      </section>
+
+      <section id="uploadsPanel" class="card" hidden>
+        <div class="sectionHeader">
+          <h2>4. Recent uploads for this DID</h2>
+          <button id="refreshUploadsButton" type="button">Refresh</button>
+        </div>
+        <ul id="uploadsList" class="uploads"></ul>
+      </section>
+
+      <section class="card">
+        <h2>How the modern path works</h2>
+        <ul>
+          <li>Your Pinata credentials stay in your browser storage only.</li>
+          <li>Your root DID and delegated session DID are generated locally with <code>@ucanto</code>.</li>
+          <li>The UCAN delegation is used as the app's local capability session envelope.</li>
+          <li>Uploads and listing calls go directly from the browser to Pinata using your BYOK settings.</li>
+          <li>If you later want a more decentralized remote-storage path, Helia + Kubo/IPFS Cluster is the next step, but it adds operational overhead compared with Pinata BYOK.</li>
+        </ul>
+      </section>
+    </main>
+
+    <script type="module" src="./js/modern/main.mjs"></script>
+  </body>
+</html>
