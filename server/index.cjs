@@ -145,11 +145,12 @@ function createApp(config = readConfig()) {
 
   app.use((error, _req, res, _next) => {
     const message = error instanceof Error ? error.message : 'Unexpected server error.';
-    const status = /not configured/i.test(message) ? 503 : 500;
+    const isConfigurationError = /not configured/i.test(message);
+    const status = isConfigurationError ? 503 : 500;
 
     res.status(status).json({
       ok: false,
-      error: message
+      error: isConfigurationError ? message : 'Unexpected server error.'
     });
   });
 

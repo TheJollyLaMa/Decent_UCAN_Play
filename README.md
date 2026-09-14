@@ -122,7 +122,7 @@ If `DEV_MAGIC_LINK_PREVIEW=1`, the server returns a preview link directly in the
 - `npm run dev` — serve both the legacy and modern frontend entries with Vite
 - `npm run build` — build both `index.html` and `modern.html`
 - `npm run server` — run the Pinata sidecar
-- `npm test` — run focused server-state tests
+- `npm test` — run focused server state and API route tests
 
 ## Notes on production hardening
 
