@@ -1,12 +1,18 @@
 import { PinataSDK } from 'pinata';
+import { sanitizeSession } from './storage.mjs';
 
 const UPLOAD_CONCURRENCY = 3;
 
 export function normalizeGateway(value = '') {
-  return String(value)
+  const gateway = String(value)
     .trim()
     .replace(/^https?:\/\//i, '')
     .replace(/\/+$/g, '');
+  if (!gateway) return '';
+  if (!/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(gateway)) {
+    throw new Error('Use a gateway domain only, without credentials, paths, query strings or ports.');
+  }
+  return gateway.toLowerCase();
 }
 
 export function hasPinataSettings(settings) {
@@ -48,17 +54,13 @@ export async function listUploads(settings, ownerDid, limit = 25) {
 }
 
 export async function uploadFiles(settings, identity, session, files) {
+  uploadMetadata(identity, session);
   const client = createPinataClient(settings);
   const tasks = files.map((file) => async () => {
+    const metadata = uploadMetadata(identity, session);
     const upload = await client.upload.public.file(file)
       .name(file.name)
-      .keyvalues({
-        ownerDid: identity.ownerDid,
-        sessionDid: session.sessionDid,
-        delegationCid: session.delegationCid,
-        profileName: identity.profileName || '',
-        profileEmail: identity.profileEmail || ''
-      });
+      .keyvalues(metadata);
 
     return {
       ...upload,
@@ -73,4 +75,15 @@ export async function uploadFiles(settings, identity, session, files) {
   }
 
   return uploads;
+}
+
+export function uploadMetadata(identity, session, now = Date.now()) {
+  if (!identity?.ownerDid || !sanitizeSession(session, now) || session.ownerDid !== identity.ownerDid) {
+    throw new Error('The local session is expired or does not belong to this identity. Start a new session.');
+  }
+  return {
+    ownerDid: identity.ownerDid,
+    sessionDid: session.sessionDid,
+    delegationCid: session.delegationCid
+  };
 }

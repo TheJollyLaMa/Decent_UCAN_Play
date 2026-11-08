@@ -8,6 +8,8 @@
     <link rel="stylesheet" href="css/modern.css" />
   </head>
   <body>
+    <decent-header></decent-header>
+    <script type="module" src="./decent-head.js" vite-ignore></script>
     <main class="shell">
       <section class="hero card">
         <p class="eyebrow">Legacy preserved · Local-first modern path</p>
@@ -26,6 +28,8 @@
           <input id="pinataJwtInput" name="pinataJwt" type="password" autocomplete="off" placeholder="Paste your Pinata JWT" required />
           <label for="pinataGatewayInput">Pinata gateway domain</label>
           <input id="pinataGatewayInput" name="pinataGateway" type="text" placeholder="example-gateway.mypinata.cloud" required />
+          <label><input id="rememberJwtInput" type="checkbox" /> Remember JWT unencrypted on this device (optional)</label>
+          <p>By default the JWT stays in page memory, not persistent storage. Never paste an organization or shared project credential here. Pinata receives this JWT directly; the local UCAN does not restrict its provider permissions.</p>
           <div class="actions">
             <button type="submit">Save local settings</button>
             <button id="clearSettingsButton" type="button" class="button-secondary">Clear local settings</button>
@@ -39,7 +43,7 @@
         <form id="identityForm" class="stack">
           <label for="profileNameInput">Profile name (optional)</label>
           <input id="profileNameInput" name="profileName" type="text" placeholder="Horus Operator" />
-          <label for="profileEmailInput">Profile email (optional metadata only)</label>
+          <label for="profileEmailInput">Profile email (optional, local profile only)</label>
           <input id="profileEmailInput" name="profileEmail" type="email" placeholder="you@example.com" />
           <div class="actions">
             <button type="submit">Create or rotate local DID</button>
@@ -57,6 +61,8 @@
         <form id="uploadForm" class="stack">
           <label for="fileInput">Choose one or more files</label>
           <input id="fileInput" name="files" type="file" multiple required />
+          <label><input id="publicUploadConsent" type="checkbox" required /> These files may be public. I will not upload confidential agreements, secrets or personal records.</label>
+          <p>Files are not encrypted here. Pinata receives filenames, content, owner/session DIDs and the delegation CID. DID filtering is discovery, not access control; a CID is not a secret. Unpinning is not guaranteed deletion from IPFS.</p>
           <button type="submit">Upload selected files</button>
         </form>
         <p id="uploadStatus" class="status" role="status" aria-live="polite" aria-atomic="true"></p>
@@ -73,9 +79,9 @@
       <section class="card">
         <h2>How the modern path works</h2>
         <ul>
-          <li>Your Pinata credentials stay in your browser storage only.</li>
+          <li>Your JWT is sent directly to Pinata over HTTPS; it remains in page memory unless you explicitly choose unencrypted persistent storage.</li>
           <li>Your root DID and delegated session DID are generated locally with <code>@ucanto</code>.</li>
-          <li>The UCAN delegation is used as the app's local capability session envelope.</li>
+          <li>The UCAN delegation is a local learning/session envelope. Pinata does not verify it or enforce its expiry; revoke the JWT at Pinata to revoke provider access.</li>
           <li>Uploads and listing calls go directly from the browser to Pinata using your BYOK settings.</li>
           <li>If you later want a more decentralized remote-storage path, Helia + Kubo/IPFS Cluster is the next step, but it adds operational overhead compared with Pinata BYOK.</li>
         </ul>

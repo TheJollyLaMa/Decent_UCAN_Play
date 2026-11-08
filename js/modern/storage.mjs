@@ -5,22 +5,28 @@ const IDENTITY_KEY = 'modern.identity';
 const SESSION_KEY = 'modern.session';
 
 export function sanitizeSession(session, now = Date.now()) {
-  if (!session?.sessionDid || !session?.expiresAt) {
+  if (!session || !['ownerDid', 'sessionDid', 'delegationCid'].every(key => typeof session[key] === 'string' && session[key].length > 0) ||
+      !Number.isFinite(session.expiresAt)) {
     return null;
   }
 
-  return Number(session.expiresAt) > now ? session : null;
+  return session.expiresAt > now ? session : null;
 }
 
 export async function loadSettings() {
   return (await get(SETTINGS_KEY)) || null;
 }
 
-export async function saveSettings(settings) {
-  await set(SETTINGS_KEY, {
-    ...settings,
+export function settingsForStorage(settings, rememberJwt = false) {
+  return {
+    pinataGateway: settings.pinataGateway,
+    ...(rememberJwt ? { pinataJwt: settings.pinataJwt } : {}),
     updatedAt: Date.now()
-  });
+  };
+}
+
+export async function saveSettings(settings, { rememberJwt = false } = {}) {
+  await set(SETTINGS_KEY, settingsForStorage(settings, rememberJwt));
 }
 
 export async function clearSettings() {

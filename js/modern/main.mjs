@@ -1,4 +1,4 @@
-import { clearIdentity, clearSession, clearSettings, clearWorkspace, loadIdentity, loadSession, loadSettings, saveIdentity, saveSession, saveSettings } from './storage.mjs';
+import { clearSession, clearSettings, clearWorkspace, loadIdentity, loadSession, loadSettings, sanitizeSession, saveIdentity, saveSession, saveSettings } from './storage.mjs';
 import { createLocalSession, createRootIdentity, describeIdentity } from './identity.mjs';
 import { hasPinataSettings, listUploads, normalizeGateway, uploadFiles } from './pinata.mjs';
 
@@ -11,6 +11,8 @@ const elements = {
   identitySummary: document.getElementById('identitySummary'),
   pinataGatewayInput: document.getElementById('pinataGatewayInput'),
   pinataJwtInput: document.getElementById('pinataJwtInput'),
+  rememberJwtInput: document.getElementById('rememberJwtInput'),
+  publicUploadConsent: document.getElementById('publicUploadConsent'),
   profileEmailInput: document.getElementById('profileEmailInput'),
   profileNameInput: document.getElementById('profileNameInput'),
   refreshUploadsButton: document.getElementById('refreshUploadsButton'),
@@ -38,7 +40,8 @@ function setStatus(element, message, isError = false) {
 }
 
 function canUpload() {
-  return Boolean(state.identity && state.session && hasPinataSettings(state.settings));
+  state.session = sanitizeSession(state.session);
+  return Boolean(state.identity && state.session?.ownerDid === state.identity.ownerDid && hasPinataSettings(state.settings));
 }
 
 function renderUploads(uploads) {
@@ -89,9 +92,10 @@ function renderIdentity() {
     elements.identitySummary.appendChild(list);
   }
 
+  const ready = canUpload();
   const activeSession = Boolean(state.session?.sessionDid);
-  elements.uploadPanel.hidden = !canUpload();
-  elements.uploadsPanel.hidden = !canUpload();
+  elements.uploadPanel.hidden = !ready;
+  elements.uploadsPanel.hidden = !ready;
   elements.startSessionButton.disabled = !state.identity;
   elements.sessionSummary.textContent = activeSession
     ? `Local UCAN session active until ${new Date(state.session.expiresAt).toLocaleString()}.`
@@ -126,11 +130,14 @@ async function handleSettingsSubmit(event) {
     return;
   }
 
-  await saveSettings(settings);
+  const rememberJwt = elements.rememberJwtInput.checked;
+  await saveSettings(settings, { rememberJwt });
   state.settings = settings;
   renderSettings();
   renderIdentity();
-  setStatus(elements.settingsStatus, 'Pinata settings saved in IndexedDB for this browser.');
+  setStatus(elements.settingsStatus, rememberJwt
+    ? 'JWT saved unencrypted in IndexedDB by your choice. Use a scoped personal credential, never a shared project secret.'
+    : 'JWT kept in this page memory only. The gateway is saved; reload or closing this page requires entering the JWT again.');
 
   if (canUpload()) {
     await refreshUploads().catch((error) => {
@@ -183,7 +190,12 @@ async function handleUploadSubmit(event) {
   event.preventDefault();
 
   if (!canUpload()) {
+    renderIdentity();
     setStatus(elements.uploadStatus, 'Save Pinata settings and start a local UCAN session before uploading.', true);
+    return;
+  }
+  if (!elements.publicUploadConsent.checked) {
+    setStatus(elements.uploadStatus, 'Confirm that the selected files may be public before uploading.', true);
     return;
   }
 
@@ -201,7 +213,7 @@ async function handleUploadSubmit(event) {
     setStatus(elements.uploadStatus, `Uploaded ${files.length} file(s) with the current local UCAN session.`);
     await refreshUploads();
   } catch (error) {
-    setStatus(elements.uploadStatus, error.message, true);
+    setStatus(elements.uploadStatus, `${error.message} Some files may already have uploaded; check the provider before retrying.`, true);
   }
 }
 
@@ -211,7 +223,8 @@ async function handleClearSettings() {
   renderSettings();
   renderIdentity();
   renderUploads([]);
-  setStatus(elements.settingsStatus, 'Local Pinata settings cleared from IndexedDB.');
+  elements.rememberJwtInput.checked = false;
+  setStatus(elements.settingsStatus, 'Local settings and the in-memory JWT cleared. This does not revoke the JWT at Pinata.');
 }
 
 async function handleClearWorkspace() {
@@ -234,6 +247,10 @@ async function handleClearWorkspace() {
 
 async function hydrate() {
   state.settings = await loadSettings();
+  elements.rememberJwtInput.checked = Boolean(state.settings?.pinataJwt);
+  if (state.settings?.pinataJwt) {
+    setStatus(elements.settingsStatus, 'An existing unencrypted JWT was restored from browser storage. Clear settings to remove it; revoke it at Pinata if needed.');
+  }
   state.identity = await loadIdentity();
   state.session = await loadSession();
 
@@ -302,3 +319,12 @@ elements.clearWorkspaceButton.addEventListener('click', () => {
 hydrate().catch((error) => {
   setStatus(elements.identityStatus, error.message, true);
 });
+
+setInterval(() => {
+  if (state.session && !sanitizeSession(state.session)) {
+    state.session = null;
+    renderIdentity();
+    clearSession().catch(error => setStatus(elements.identityStatus, error.message, true));
+    setStatus(elements.identityStatus, 'Local session expired. Start a new session to continue.');
+  }
+}, 10000);

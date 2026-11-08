@@ -53,9 +53,7 @@ export async function createLocalSession(identity, { ttlSeconds = SESSION_LIFETI
     capabilities: DEFAULT_CAPABILITIES,
     facts: [
       {
-        ownerDid: identity.ownerDid,
-        profileName: identity.profileName || '',
-        profileEmail: identity.profileEmail || ''
+        ownerDid: identity.ownerDid
       }
     ]
   });
@@ -103,7 +101,7 @@ export function describeIdentity(identity, session) {
   }
 
   if (identity.profileEmail) {
-    detailLines.push(`Metadata email: ${identity.profileEmail}`);
+    detailLines.push(`Local profile email: ${identity.profileEmail}`);
   }
 
   if (session?.sessionDid) {
