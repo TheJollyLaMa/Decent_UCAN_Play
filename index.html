@@ -2,13 +2,17 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/png" href="img/Horus.png" />
     <title>Decent UCAN Play</title>
     <link rel="stylesheet" href="css/style.css" />
 
   </head>
   <body>
+    <decent-header></decent-header>
+    <script type="module" src="./decent-head.js" vite-ignore></script>
     <h1>Decent UCAN Play</h1>
+    <p style="text-align:center;">Legacy app · Try the <a href="./modern.html">modern local-first path</a></p>
     <!-- <button id="metamaskButton">
       <img src="img/metamask.png" alt="Metamask" style="width: 24px; height: 24px;">
     </button> -->
@@ -54,12 +58,13 @@
 
 
     <!-- Waiting overlay -->
-    <div id="waitingScreen" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); color:#fff; font-size:1.5em; display:flex; align-items:center; justify-content:center; z-index:2000;">
+    <div id="waitingScreen" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); color:#fff; font-size:1.5em; align-items:center; justify-content:center; z-index:2000;">
       Checking your email… please click the verification link.
     </div>
 
     <!-- App section (persistent Agent data) -->
     <div id="appSection">
+      <p id="legacyStorageStatus" role="status"></p>
       <div id="agentInfo"></div>
       <div id="spacesList"></div>
       <div id="spaceDetails"></div>
@@ -68,6 +73,6 @@
     <!-- @web3-storage browser.min.js hosted in JollySimSiddhi space on web3.Storage -->
     <script src="https://bafybeicqxq54ncvkxvwdbov6ljgtyyrcpmek3ic2fxrwwsigmh4ud4s2mu.ipfs.w3s.link/browser.min.js"></script>
   
-    <script src="js/script.js"></script>
+    <script type="module" src="./js/legacy-entry.js"></script>
   </body>
 </html>
