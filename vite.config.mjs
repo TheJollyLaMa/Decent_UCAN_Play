@@ -10,7 +10,7 @@ export default defineConfig({
   plugins: [{
     name: 'decent-head-static-assets',
     async closeBundle() {
-      for (const file of ['decent-head.js', 'decent-head.config.js', 'vendor/decent-head/2.0.0']) {
+      for (const file of ['decent-head.js', 'decent-head.config.js', 'vendor/decent-head/2.0.0', 'assets/social-preview.jpg']) {
         await cp(resolve(rootDir, file), resolve(rootDir, 'dist', file), { recursive: true });
       }
     }
